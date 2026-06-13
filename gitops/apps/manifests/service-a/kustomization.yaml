@@ -12,5 +12,5 @@ resources:
 # pod will ImagePullBackOff — this is expected for a fresh cluster.
 images:
   - name: service-a
-    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/adowol-dev/service-a
+    newName: 381492057134.dkr.ecr.us-east-1.amazonaws.com/adowol-dev/service-a
     newTag: initial

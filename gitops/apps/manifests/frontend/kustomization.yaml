@@ -9,5 +9,5 @@ resources:
 
 images:
   - name: frontend
-    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/adowol-dev/frontend
+    newName: 381492057134.dkr.ecr.us-east-1.amazonaws.com/adowol-dev/frontend
     newTag: initial

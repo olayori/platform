@@ -9,5 +9,5 @@ resources:
 
 images:
   - name: service-b
-    newName: 000000000000.dkr.ecr.us-east-1.amazonaws.com/adowol-dev/service-b
+    newName: 381492057134.dkr.ecr.us-east-1.amazonaws.com/adowol-dev/service-b
     newTag: initial
