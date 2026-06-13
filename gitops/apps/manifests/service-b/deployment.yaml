@@ -18,6 +18,11 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        # distroless :nonroot uses a NAMED user; kubelet needs a numeric UID to
+        # verify non-root under runAsNonRoot. 65532 is distroless nonroot's uid/gid.
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
       containers:
