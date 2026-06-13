@@ -6,6 +6,14 @@ name: Build & Deploy
 on:
   push:
     branches: [master]
+  # Manually force a build/push even when no files changed — needed to bootstrap
+  # a service whose ECR repo is still empty (the path filter would otherwise skip it).
+  workflow_dispatch:
+    inputs:
+      services:
+        description: "Services to build/push: 'all' or space-separated names (service-a service-b frontend)"
+        default: "all"
+        type: string
 
 # Serialize runs so the GitOps tag-bump commits don't race.
 concurrency:
@@ -33,14 +41,15 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      service-a: ${{ steps.filter.outputs.service-a }}
-      service-b: ${{ steps.filter.outputs.service-b }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      any: ${{ steps.filter.outputs.changes }}
+      service-a: ${{ steps.decide.outputs.service-a }}
+      service-b: ${{ steps.decide.outputs.service-b }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+      any: ${{ steps.decide.outputs.any }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
+        if: github.event_name != 'workflow_dispatch'
         with:
           filters: |
             service-a:
@@ -49,10 +58,51 @@ jobs:
               - 'services/service-b/**'
             frontend:
               - 'services/frontend/**'
+      # On a manual run, build the requested services (default all), ignoring the
+      # path filter. On push, fall back to what changed.
+      - name: Decide which services to build
+        id: decide
+        env:
+          DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          REQUESTED: ${{ inputs.services }}
+          F_service_a: ${{ steps.filter.outputs.service-a }}
+          F_service_b: ${{ steps.filter.outputs.service-b }}
+          F_frontend: ${{ steps.filter.outputs.frontend }}
+        run: |
+          set -euo pipefail
+          a=false; b=false; f=false
+          if [ "$DISPATCH" = "true" ]; then
+            req="${REQUESTED:-all}"
+            if [ "$req" = "all" ]; then
+              a=true; b=true; f=true
+            else
+              for s in $req; do
+                case "$s" in
+                  service-a) a=true ;;
+                  service-b) b=true ;;
+                  frontend)  f=true ;;
+                  *) echo "Unknown service: $s" >&2; exit 1 ;;
+                esac
+              done
+            fi
+          else
+            [ "${F_service_a:-false}" = "true" ] && a=true || true
+            [ "${F_service_b:-false}" = "true" ] && b=true || true
+            [ "${F_frontend:-false}" = "true" ] && f=true || true
+          fi
+          any=false
+          { [ "$a" = true ] || [ "$b" = true ] || [ "$f" = true ]; } && any=true || true
+          {
+            echo "service-a=$a"
+            echo "service-b=$b"
+            echo "frontend=$f"
+            echo "any=$any"
+          } >> "$GITHUB_OUTPUT"
+          echo "Build set -> service-a=$a service-b=$b frontend=$f (any=$any)"
 
   build-push:
     needs: changes
-    if: ${{ needs.changes.outputs.any != '[]' }}
+    if: ${{ needs.changes.outputs.any == 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -94,7 +144,7 @@ jobs:
 
   bump-gitops:
     needs: [changes, build-push]
-    if: ${{ needs.changes.outputs.any != '[]' }}
+    if: ${{ needs.changes.outputs.any == 'true' }}
     runs-on: ubuntu-latest
     steps:
       # No token: needed — checkout uses the runner's built-in GITHUB_TOKEN and
