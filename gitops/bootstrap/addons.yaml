@@ -13,8 +13,8 @@ metadata:
 spec:
   project: platform
   source:
-    repoURL: "https://github.com/adowol/platform.git"
-    targetRevision: main
+    repoURL: "https://github.com/olayori/platform.git"
+    targetRevision: master
     path: gitops/addons
     directory:
       recurse: true

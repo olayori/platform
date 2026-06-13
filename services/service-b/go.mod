@@ -1,3 +1,3 @@
-module github.com/adowol/platform/services/service-b
+module github.com/olayori/platform/services/service-b
 
 go 1.22

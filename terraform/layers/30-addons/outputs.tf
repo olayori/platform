@@ -8,6 +8,6 @@ output "argocd_initial_admin_secret_command" {
 }
 
 output "argocd_port_forward_command" {
-  description = "Open the Argo CD UI locally."
-  value       = "kubectl -n argocd port-forward svc/argocd-server 8080:443"
+  description = "Open the Argo CD UI locally at http://localhost:8080 (server runs insecure)."
+  value       = "kubectl -n argocd port-forward svc/argocd-server 8080:80"
 }

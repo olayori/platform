@@ -6,7 +6,7 @@ provider "aws" {
 data "terraform_remote_state" "compute" {
   backend = "s3"
   config = {
-    bucket = var.state_bucket
+    bucket = "adowol-dev-tfstate"
     key    = "layers/20-compute/terraform.tfstate"
     region = var.region
   }

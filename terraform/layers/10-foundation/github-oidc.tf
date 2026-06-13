@@ -32,7 +32,7 @@ data "aws_iam_policy_document" "github_ci_assume" {
     }
 
     # Restrict to this repository. Tighten further to specific branches/envs
-    # by replacing the wildcard, e.g. "repo:${var.github_repo}:ref:refs/heads/main".
+    # by replacing the wildcard, e.g. "repo:${var.github_repo}:ref:refs/heads/master".
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"

@@ -9,7 +9,7 @@ metadata:
 spec:
   description: Adowol platform addons and workloads
   sourceRepos:
-    - "https://github.com/adowol/platform.git"
+    - "https://github.com/olayori/platform.git"
     - "https://argoproj.github.io/argo-helm"
     - "https://charts.jetstack.io"
     - "https://kubernetes-sigs.github.io/metrics-server/"

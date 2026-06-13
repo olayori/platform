@@ -9,6 +9,7 @@ terraform {
   }
 
   backend "s3" {
+    bucket       = "adowol-dev-tfstate"
     key          = "layers/20-compute/terraform.tfstate"
     encrypt      = true
     use_lockfile = true

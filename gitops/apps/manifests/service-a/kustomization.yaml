@@ -8,7 +8,7 @@ resources:
   - pdb.yaml
 
 # CI rewrites newName + newTag via `kustomize edit set image` on every push to
-# main. Until the first CI run, the placeholder below is not pullable and the
+# master. Until the first CI run, the placeholder below is not pullable and the
 # pod will ImagePullBackOff — this is expected for a fresh cluster.
 images:
   - name: service-a

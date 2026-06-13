@@ -16,11 +16,6 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "state_bucket" {
-  description = "S3 bucket holding remote state (to read the compute layer)."
-  type        = string
-}
-
 variable "argocd_chart_version" {
   description = "Version of the argo-cd Helm chart to install."
   type        = string
@@ -30,13 +25,13 @@ variable "argocd_chart_version" {
 variable "gitops_repo_url" {
   description = "HTTPS URL of the git repo Argo CD watches for manifests."
   type        = string
-  default     = "https://github.com/adowol/platform.git"
+  default     = "https://github.com/olayori/platform.git"
 }
 
 variable "gitops_target_revision" {
   description = "Git branch/tag/commit Argo CD tracks."
   type        = string
-  default     = "main"
+  default     = "master"
 }
 
 variable "gitops_path" {

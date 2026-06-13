@@ -66,8 +66,8 @@ argocd-password: ## Print the initial Argo CD admin password
 	@kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
 
 .PHONY: argocd-ui
-argocd-ui: ## Port-forward the Argo CD UI to https://localhost:8080
-	kubectl -n argocd port-forward svc/argocd-server 8080:443
+argocd-ui: ## Port-forward the Argo CD UI to http://localhost:8080 (server runs insecure)
+	kubectl -n argocd port-forward svc/argocd-server 8080:80
 
 .PHONY: ingress-url
 ingress-url: ## Print the demo app's public ALB hostname

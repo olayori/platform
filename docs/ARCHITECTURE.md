@@ -93,7 +93,7 @@ platform/
 │
 ├── .github/workflows/           ← CI/CD
 │   ├── ci.yaml                  # PR + push: lint, test, build (no push)
-│   ├── build-and-deploy.yaml    # main: build → push to ECR → bump gitops tag
+│   ├── build-and-deploy.yaml    # master: build → push to ECR → bump gitops tag
 │   └── terraform-validate.yaml  # PR: fmt + validate the terraform layers
 │
 ├── Makefile                     # operator entrypoints (tf-*, build-*, bootstrap)
@@ -123,6 +123,9 @@ bucket the others use). Run **once**, then never again.
 The durable, slow-changing base. Rarely destroyed.
 - **VPC** (`terraform-aws-modules/vpc`): 3 AZs, public + private subnets, single NAT gateway
   (cost-optimized for one env), tagged for EKS/ELB subnet discovery.
+- **VPC endpoints** to keep AWS-bound traffic off the NAT gateway: a free **S3 gateway
+  endpoint** (carries ECR image-layer data — the bulk of egress) plus interface endpoints
+  for `ecr.api`, `ecr.dkr`, `sts` (configurable via `interface_vpc_endpoints`).
 - **ECR**: one private repo per service (`service-a`, `service-b`, `frontend`) with image
   scanning on push and a lifecycle policy to expire untagged images.
 - **KMS** key for EKS secret envelope encryption.
@@ -215,7 +218,7 @@ dropped Linux capabilities, resource requests/limits, `PodDisruptionBudget`, and
 │  (build is a verification only; nothing is pushed)               │
 └──────────────────────────────────────────────────────────────────┘
 
-┌── build-and-deploy.yaml (push to main) ──────────────────────────┐
+┌── build-and-deploy.yaml (push to master) ────────────────────────┐
 │  1. assume CI role via OIDC (no static AWS keys)                 │
 │  2. docker build + push to ECR, tagged with the git SHA          │
 │  3. `kustomize edit set image` in gitops/apps/manifests/<svc>    │

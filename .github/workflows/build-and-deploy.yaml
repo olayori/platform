@@ -1,11 +1,11 @@
 name: Build & Deploy
 
-# On push to main: test, build & push images to ECR (keyless via OIDC),
-# then bump the image tag in the GitOps manifests. Argo CD does the actual
-# deploy by reconciling the committed tag — this workflow never touches the cluster.
+# On push to master: build & push images to ECR (keyless via OIDC), then bump the
+# image tag in the GitOps manifests. Argo CD does the actual deploy by reconciling
+# the committed tag — this workflow never touches the cluster.
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 # Serialize runs so the GitOps tag-bump commits don't race.
 concurrency:
@@ -16,9 +16,18 @@ permissions:
   contents: write # to commit the image-tag bump back to the repo
   id-token: write # to request the OIDC token for AWS
 
+# ---------------------------------------------------------------------------
+# All configuration lives here as local environment variables — no GitHub
+# repository secrets or variables are used. These values are not sensitive
+# (an IAM role ARN and an ECR registry are public identifiers; the OIDC trust
+# policy is what actually authorizes the role). Edit AWS_ACCOUNT_ID for your
+# account; the rest match the Terraform foundation layer's naming.
+# ---------------------------------------------------------------------------
 env:
+  AWS_ACCOUNT_ID: "381492057134" # <-- set to your AWS account ID
   AWS_REGION: us-east-1
-  ECR_NAMESPACE: adowol-dev # matches "${name_prefix}-${environment}" repo prefix
+  ECR_NAMESPACE: adowol-dev # = "${name_prefix}-${environment}" repo prefix
+  CI_ROLE_NAME: adowol-dev-github-actions-ci # = foundation github_ci role name
 
 jobs:
   changes:
@@ -61,12 +70,11 @@ jobs:
         name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.CI_ROLE_NAME }}
           aws-region: ${{ env.AWS_REGION }}
 
       - if: steps.gate.outputs.build == 'true'
         name: Login to Amazon ECR
-        id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - if: steps.gate.outputs.build == 'true'
@@ -78,7 +86,7 @@ jobs:
         with:
           context: services/${{ matrix.service }}
           push: true
-          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_NAMESPACE }}/${{ matrix.service }}:sha-${{ github.sha }}
+          tags: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_NAMESPACE }}/${{ matrix.service }}:sha-${{ github.sha }}
           build-args: VERSION=sha-${{ github.sha }}
           provenance: false
           cache-from: type=gha
@@ -89,21 +97,9 @@ jobs:
     if: ${{ needs.changes.outputs.any != '[]' }}
     runs-on: ubuntu-latest
     steps:
+      # No token: needed — checkout uses the runner's built-in GITHUB_TOKEN and
+      # persists it for the later `git push`. Nothing is read from the secret store.
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Resolve ECR registry
-        id: reg
-        run: |
-          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
-          echo "registry=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> "$GITHUB_OUTPUT"
 
       - name: Install kustomize
         run: |
@@ -112,7 +108,7 @@ jobs:
 
       - name: Bump image tags for changed services
         env:
-          REGISTRY: ${{ steps.reg.outputs.registry }}
+          REGISTRY: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
           TAG: sha-${{ github.sha }}
         run: |
           set -euo pipefail
@@ -145,4 +141,4 @@ jobs:
             exit 0
           fi
           git commit -m "ci: deploy ${GITHUB_SHA::7} [skip ci]"
-          git push origin HEAD:main
+          git push origin HEAD:master

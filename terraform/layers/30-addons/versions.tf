@@ -21,6 +21,7 @@ terraform {
   }
 
   backend "s3" {
+    bucket       = "adowol-dev-tfstate"
     key          = "layers/30-addons/terraform.tfstate"
     encrypt      = true
     use_lockfile = true

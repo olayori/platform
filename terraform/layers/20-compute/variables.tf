@@ -16,11 +16,6 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "state_bucket" {
-  description = "S3 bucket holding remote state (to read the foundation layer)."
-  type        = string
-}
-
 variable "cluster_version" {
   description = "EKS control plane version."
   type        = string

@@ -38,7 +38,7 @@ aws sts get-caller-identity   # confirm you're authenticated to the right accoun
 
 ### 0. Set your repo identity (one-time)
 
-The GitHub OIDC trust and the GitOps repo URL default to `adowol/platform`. If your
+The GitHub OIDC trust and the GitOps repo URL default to `olayori/platform`. If your
 repo differs, override them:
 
 - Terraform: `terraform/layers/10-foundation` var `github_repo`, and
@@ -82,21 +82,31 @@ make ingress-url     # ALB hostname; open http://<hostname>/
 
 ## Deploy app changes (CI/CD)
 
-Configure these once in the GitHub repo:
+The workflows use **no GitHub repository secrets or variables** — all config lives
+in a local `env:` block at the top of [`.github/workflows/build-and-deploy.yaml`](.github/workflows/build-and-deploy.yaml).
+Set these to match your account once:
 
-| Kind | Name | Value |
-|------|------|-------|
-| Secret | `AWS_CI_ROLE_ARN` | `github_ci_role_arn` output from the foundation layer |
+| Env var | Value |
+|---------|-------|
+| `AWS_ACCOUNT_ID` | your 12-digit AWS account ID |
+| `AWS_REGION` | region (default `us-east-1`) |
+| `ECR_NAMESPACE` | `adowol-dev` (the `${name_prefix}-${environment}` repo prefix) |
+| `CI_ROLE_NAME` | `adowol-dev-github-actions-ci` (the foundation CI role name) |
+
+These aren't sensitive — an IAM role ARN and ECR registry are public identifiers;
+the **OIDC trust policy** on the role (foundation layer) is what actually authorizes
+CI, and the **built-in `GITHUB_TOKEN`** (auto-injected by the runner) is what pushes
+the tag bump. No long-lived credentials exist anywhere.
 
 Then the flow is automatic:
 
 1. Open a PR → **CI** runs `go test` / `npm test` and builds images (no push).
-2. Merge to `main` → **Build & Deploy** pushes images to ECR (`sha-<commit>`), runs
+2. Merge to `master` → **Build & Deploy** pushes images to ECR (`sha-<commit>`), runs
    `kustomize edit set image` on the changed services, and commits the tag bump.
 3. **Argo CD** sees the new tag in `gitops/` and rolls the deployment.
 
 > **First-deploy note:** a fresh cluster has empty ECR repos, so `service-*`/`frontend`
-> pods `ImagePullBackOff` until the first push to `main` builds and bumps a real image tag.
+> pods `ImagePullBackOff` until the first push to `master` builds and bumps a real image tag.
 > This is expected — the GitOps desired state exists before the first image does.
 
 ---

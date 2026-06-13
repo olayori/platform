@@ -11,8 +11,8 @@ spec:
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
-        repoURL: "https://github.com/adowol/platform.git"
-        revision: main
+        repoURL: "https://github.com/olayori/platform.git"
+        revision: master
         directories:
           - path: gitops/apps/manifests/*
   template:
@@ -23,8 +23,8 @@ spec:
     spec:
       project: platform
       source:
-        repoURL: "https://github.com/adowol/platform.git"
-        targetRevision: main
+        repoURL: "https://github.com/olayori/platform.git"
+        targetRevision: master
         path: "{{.path.path}}"
       destination:
         server: "https://kubernetes.default.svc"

@@ -43,5 +43,21 @@ variable "service_names" {
 variable "github_repo" {
   description = "GitHub repository (owner/name) allowed to assume the CI role via OIDC."
   type        = string
-  default     = "adowol/platform"
+  default     = "olayori/platform"
+}
+
+variable "interface_vpc_endpoints" {
+  description = <<-EOT
+    AWS services exposed via Interface (PrivateLink) VPC endpoints so their traffic
+    stays off the NAT gateway. The S3 *gateway* endpoint is always created (it is free
+    and carries ECR image-layer data, the bulk of EKS egress).
+
+    Each interface endpoint costs ~$0.01/hr PER AZ plus $0.01/GB, so it trades a fixed
+    hourly cost for avoided NAT data processing ($0.045/GB). The default set covers the
+    EKS essentials (image pulls + IRSA/Pod Identity). Set to [] to keep only the free
+    S3 gateway endpoint. Other useful values: "logs", "ec2", "elasticloadbalancing",
+    "ssm", "ssmmessages", "ec2messages".
+  EOT
+  type        = list(string)
+  default     = ["ecr.api", "ecr.dkr", "sts"]
 }

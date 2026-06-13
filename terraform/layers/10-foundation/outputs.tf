@@ -41,3 +41,8 @@ output "github_ci_role_arn" {
   description = "IAM role ARN that GitHub Actions assumes via OIDC."
   value       = aws_iam_role.github_ci.arn
 }
+
+output "vpc_endpoint_ids" {
+  description = "Map of VPC endpoint key -> endpoint ID (s3 gateway + configured interface endpoints)."
+  value       = { for k, v in module.vpc_endpoints.endpoints : k => v.id }
+}

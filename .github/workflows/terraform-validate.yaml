@@ -8,7 +8,7 @@ on:
       - "terraform/**"
   push:
     branches-ignore:
-      - main
+      - master
     paths:
       - "terraform/**"
 

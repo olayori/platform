@@ -6,7 +6,7 @@ on:
   pull_request:
   push:
     branches-ignore:
-      - main # main is handled by build-and-deploy.yaml
+      - master # master is handled by build-and-deploy.yaml
 
 permissions:
   contents: read
