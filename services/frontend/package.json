@@ -1,0 +1,11 @@
+{
+  "name": "adowol-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lightweight static frontend for the Adowol Platform demo, served by nginx.",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "lint": "node test/smoke.test.js"
+  },
+  "devDependencies": {}
+}

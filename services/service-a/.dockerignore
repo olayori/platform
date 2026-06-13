@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Docs & meta
+README.md
+*.md
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Test & build artifacts
+*_test.go
+bin/
+out/
+dist/
+service-a
+
+# Editor / OS cruft
+.idea/
+.vscode/
+.DS_Store

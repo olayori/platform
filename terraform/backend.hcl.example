@@ -1,0 +1,13 @@
+# Copy this file to backend.hcl and fill in the bucket created by the bootstrap layer.
+#   cp backend.hcl.example backend.hcl
+# Then init any layer with:
+#   terraform init -backend-config=../../backend.hcl
+# (the Makefile does this for you).
+#
+# backend.hcl is gitignored — it is environment-specific and not secret, but
+# keeping it out of git lets each operator point at their own bucket.
+
+bucket       = "adowol-dev-tfstate-CHANGEME"
+region       = "us-east-1"
+encrypt      = true
+use_lockfile = true

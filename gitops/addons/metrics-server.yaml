@@ -1,0 +1,32 @@
+# metrics-server — supplies CPU/memory metrics for `kubectl top` and HPAs.
+# EKS Auto Mode does not ship metrics-server, and our workloads autoscale on it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: "https://kubernetes-sigs.github.io/metrics-server/"
+    chart: metrics-server
+    targetRevision: 3.12.2
+    helm:
+      values: |
+        args:
+          - --kubelet-insecure-tls
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,17 @@
+# Git
+.git
+.gitignore
+
+# Docs / meta
+README.md
+*.md
+
+# Tests and build artifacts
+*_test.go
+/out
+service-b
+
+# Editor / OS
+.DS_Store
+.idea
+.vscode

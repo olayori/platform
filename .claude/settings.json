@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(terraform version *)",
+      "Bash(aws --version)",
+      "Bash(go version *)",
+      "Bash(go test *)",
+      "Bash(node --test test/)",
+      "Bash(node --test 'test/**/*.test.js')",
+      "Bash(node test/smoke.test.js)",
+      "Bash(go vet *)",
+      "Bash(gofmt -l .)",
+      "Bash(npm test *)"
+    ]
+  }
+}

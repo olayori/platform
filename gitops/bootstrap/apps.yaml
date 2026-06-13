@@ -1,0 +1,38 @@
+# ApplicationSet that generates one Argo CD Application per directory under
+# gitops/apps/manifests/. Drop a new Kustomize directory there and a new app
+# appears automatically — no Application YAML to hand-write.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: workloads
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: "https://github.com/adowol/platform.git"
+        revision: main
+        directories:
+          - path: gitops/apps/manifests/*
+  template:
+    metadata:
+      name: "{{.path.basename}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: platform
+      source:
+        repoURL: "https://github.com/adowol/platform.git"
+        targetRevision: main
+        path: "{{.path.path}}"
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: demo
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

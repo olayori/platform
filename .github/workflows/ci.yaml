@@ -1,0 +1,87 @@
+name: CI
+
+# Build + test on every PR and on pushes to any branch.
+# This workflow NEVER pushes images or touches infra — it only verifies.
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main # main is handled by build-and-deploy.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      service-a: ${{ steps.filter.outputs.service-a }}
+      service-b: ${{ steps.filter.outputs.service-b }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            service-a:
+              - 'services/service-a/**'
+            service-b:
+              - 'services/service-b/**'
+            frontend:
+              - 'services/frontend/**'
+
+  test-go:
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [service-a, service-b]
+    if: ${{ needs.changes.outputs[matrix.service] == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: services/${{ matrix.service }}/go.mod
+      - name: Vet
+        working-directory: services/${{ matrix.service }}
+        run: go vet ./...
+      - name: Test
+        working-directory: services/${{ matrix.service }}
+        run: go test -race -count=1 ./...
+
+  test-frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test
+        working-directory: services/frontend
+        run: npm test
+
+  docker-build:
+    needs: changes
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [service-a, service-b, frontend]
+    if: ${{ needs.changes.outputs[matrix.service] == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: false
+          tags: ${{ matrix.service }}:ci-${{ github.sha }}
+          build-args: VERSION=ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

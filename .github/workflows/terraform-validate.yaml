@@ -1,0 +1,45 @@
+name: Terraform Validate
+
+# Format-check and validate every Terraform layer on PRs that touch them.
+# No cloud credentials needed: init runs with -backend=false.
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - "terraform/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        layer:
+          - bootstrap
+          - layers/10-foundation
+          - layers/20-compute
+          - layers/30-addons
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.7"
+
+      - name: fmt
+        working-directory: terraform/${{ matrix.layer }}
+        run: terraform fmt -check -recursive
+
+      - name: init (no backend)
+        working-directory: terraform/${{ matrix.layer }}
+        run: terraform init -backend=false -input=false
+
+      - name: validate
+        working-directory: terraform/${{ matrix.layer }}
+        run: terraform validate

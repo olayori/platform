@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adowol Platform Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>Adowol Platform Demo</h1>
+      <button id="refresh" type="button">Refresh</button>
+    </header>
+
+    <section class="cards">
+      <article class="card" id="card-hello">
+        <h2>Service A &mdash; <code>/api/hello</code></h2>
+        <pre id="hello-output" class="output">Loading&hellip;</pre>
+      </article>
+
+      <article class="card" id="card-time">
+        <h2>Service B &mdash; <code>/api/time</code></h2>
+        <pre id="time-output" class="output">Loading&hellip;</pre>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

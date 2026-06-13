@@ -1,0 +1,148 @@
+name: Build & Deploy
+
+# On push to main: test, build & push images to ECR (keyless via OIDC),
+# then bump the image tag in the GitOps manifests. Argo CD does the actual
+# deploy by reconciling the committed tag — this workflow never touches the cluster.
+on:
+  push:
+    branches: [main]
+
+# Serialize runs so the GitOps tag-bump commits don't race.
+concurrency:
+  group: build-and-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write # to commit the image-tag bump back to the repo
+  id-token: write # to request the OIDC token for AWS
+
+env:
+  AWS_REGION: us-east-1
+  ECR_NAMESPACE: adowol-dev # matches "${name_prefix}-${environment}" repo prefix
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      service-a: ${{ steps.filter.outputs.service-a }}
+      service-b: ${{ steps.filter.outputs.service-b }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      any: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            service-a:
+              - 'services/service-a/**'
+            service-b:
+              - 'services/service-b/**'
+            frontend:
+              - 'services/frontend/**'
+
+  build-push:
+    needs: changes
+    if: ${{ needs.changes.outputs.any != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [service-a, service-b, frontend]
+    steps:
+      - name: Skip unchanged service
+        id: gate
+        run: echo "build=${{ needs.changes.outputs[matrix.service] }}" >> "$GITHUB_OUTPUT"
+
+      - if: steps.gate.outputs.build == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.gate.outputs.build == 'true'
+        name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - if: steps.gate.outputs.build == 'true'
+        name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - if: steps.gate.outputs.build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - if: steps.gate.outputs.build == 'true'
+        name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_NAMESPACE }}/${{ matrix.service }}:sha-${{ github.sha }}
+          build-args: VERSION=sha-${{ github.sha }}
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  bump-gitops:
+    needs: [changes, build-push]
+    if: ${{ needs.changes.outputs.any != '[]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve ECR registry
+        id: reg
+        run: |
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "registry=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> "$GITHUB_OUTPUT"
+
+      - name: Install kustomize
+        run: |
+          curl -sSfL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Bump image tags for changed services
+        env:
+          REGISTRY: ${{ steps.reg.outputs.registry }}
+          TAG: sha-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          bumped=0
+          # Per-service change flags (matrix-style indexing isn't available in run steps):
+          declare -A CHANGED=(
+            [service-a]="${{ needs.changes.outputs.service-a }}"
+            [service-b]="${{ needs.changes.outputs.service-b }}"
+            [frontend]="${{ needs.changes.outputs.frontend }}"
+          )
+          for svc in service-a service-b frontend; do
+            if [ "${CHANGED[$svc]}" = "true" ]; then
+              echo "Bumping $svc -> $REGISTRY/$ECR_NAMESPACE/$svc:$TAG"
+              (cd "gitops/apps/manifests/$svc" && \
+                kustomize edit set image "$svc=$REGISTRY/$ECR_NAMESPACE/$svc:$TAG")
+              bumped=1
+            fi
+          done
+          echo "bumped=$bumped" >> "$GITHUB_ENV"
+
+      - name: Commit & push tag bump
+        if: env.bumped == '1'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gitops/apps/manifests
+          if git diff --cached --quiet; then
+            echo "No manifest changes to commit."
+            exit 0
+          fi
+          git commit -m "ci: deploy ${GITHUB_SHA::7} [skip ci]"
+          git push origin HEAD:main

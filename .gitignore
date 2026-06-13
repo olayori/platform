@@ -1,0 +1,42 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+.terraformrc
+terraform.rc
+
+# Operator-specific backend config (point at your own state bucket)
+terraform/backend.hcl
+
+# EXCEPTION: keep the bootstrap state (it only describes the state bucket and
+# is needed to manage that bucket). Comment out if you prefer to track it.
+# terraform/bootstrap/terraform.tfstate
+
+# Go
+services/**/bin/
+*.test
+*.out
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Kube
+kubeconfig
+*.kubeconfig

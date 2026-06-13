@@ -1,0 +1,25 @@
+# Argo CD AppProject that scopes what the platform's apps may deploy.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Adowol platform addons and workloads
+  sourceRepos:
+    - "https://github.com/adowol/platform.git"
+    - "https://argoproj.github.io/argo-helm"
+    - "https://charts.jetstack.io"
+    - "https://kubernetes-sigs.github.io/metrics-server/"
+    - "https://prometheus-community.github.io/helm-charts"
+  destinations:
+    - server: "https://kubernetes.default.svc"
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
